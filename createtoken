@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CreateToken</title>
+  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.78.1/lib/index.iife.min.js"></script>
+  <style>
+    body { background-color: #001f3f; color: white; font-family: Arial, sans-serif; margin:0; padding:0;}
+    header { background:#001a35; padding:1em; display:flex; align-items:center; justify-content:center;}
+    header h1 { color:hotpink; margin:0; font-size:2em; display:flex; align-items:center; }
+    header img { width:30px; height:30px; margin-right:10px; filter:hue-rotate(280deg) saturate(2) brightness(1.2); }
+    .page { display:none; padding:2em; }
+    .page.active { display:block; }
+    input,textarea,button,select { display:block; margin:1em 0; padding:.5em; font-size:1em; width:100%; max-width:500px;}
+    button { background:hotpink; color:white; border:none; cursor:pointer; margin-right:10px; }
+    .nav-buttons { margin-top:20px; }
+    a { color:lightblue; text-decoration:underline; }
+    .success-animation { text-align:center; animation:popIn 1s ease-in-out; }
+    @keyframes popIn {0%{opacity:0;transform:scale(0.5);}100%{opacity:1;transform:scale(1);}}
+
+    footer { background-color: #001a35; color: white; padding: 1em; text-align: center; font-size: 0.9em; margin-top: 20px; }
+    footer a { color: lightblue; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="cat logo"/> CreateToken</h1>
+  </header>
+
+  <div id="page1" class="page active">
+    <h2>Connect your Wallet</h2>
+    <button onclick="connectWallet('phantom')">Connect Phantom</button>
+    <button onclick="connectWallet('solflare')">Connect Solflare</button>
+    <p id="walletAddress"></p>
+    <div class="nav-buttons"><button onclick="nextPage()">Next</button></div>
+  </div>
+
+  <div id="page2" class="page">
+    <h2>Token Information</h2>
+    <input type="text" id="tokenName" placeholder="Token Name" />
+    <input type="text" id="tokenSymbol" placeholder="Token Symbol" />
+    <input type="file" id="tokenLogo" accept="image/*" placeholder="Logo file for your coin"/>
+    <div class="nav-buttons"><button onclick="prevPage()">Back</button><button onclick="nextPage()">Next</button></div>
+  </div>
+
+  <div id="page3" class="page">
+    <h2>Details & Socials</h2>
+    <input type="number" id="decimals" value="900000000" placeholder="Decimals (recommend: 900000000)"/>
+    <textarea id="description" placeholder="Token Description"></textarea>
+    <input type="url" id="x" placeholder="Twitter (X) link" />
+    <input type="url" id="telegram" placeholder="Telegram link" />
+    <input type="url" id="instagram" placeholder="Instagram link" />
+    <input type="url" id="discord" placeholder="Discord link" />
+    <div class="nav-buttons"><button onclick="prevPage()">Back</button><button onclick="nextPage()">Next</button></div>
+  </div>
+
+  <div id="page4" class="page">
+    <h2>Revoke Authorities</h2>
+    <label><input type="checkbox" id="revokeFreeze"/> Revoke Freeze</label>
+    <label><input type="checkbox" id="revokeMint"/> Revoke Mint</label>
+    <label><input type="checkbox" id="revokeUpdate"/> Revoke Update</label>
+    <p>Send <strong>0.1 SOL</strong> to revoke selected authorities.</p>
+    <div class="nav-buttons">
+      <button onclick="prevPage()">Back</button>
+      <button onclick="revokeAuthorities()">Pay & Revoke</button>
+    </div>
+  </div>
+
+  <div id="page5" class="page">
+    <div class="success-animation"><h2>🎉 Token Created Successfully!</h2><p>Your memecoin is now live on Solana 🚀</p></div>
+    <div class="nav-buttons"><button onclick="nextPage()">Continue</button></div>
+  </div>
+
+  <div id="page6" class="page">
+    <h2>Launch & Explore</h2>
+    <a href="https://explorer.solana.com" target="_blank">View on Solana Explorer</a><br/>
+    <a href="https://solscan.io" target="_blank">View on Solscan</a><br/>
+    <a href="https://pump.fun" target="_blank">Pump.fun</a><br/><br/>
+    <p>Send <strong>0.5 SOL</strong> to create liquidity pool.</p>
+    <div class="nav-buttons">
+      <button onclick="prevPage()">Back</button>
+      <button onclick="createPool()">Pay & Create Pool</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 CreateToken. All rights reserved.</p>
+    <p>Created by the CreateToken team.</p>
+    <p><strong>Security Notice:</strong> Your security is important to us. Always verify your wallet address and transaction details before proceeding with any action. We do not store your wallet information or private keys. Always make sure to use trusted wallet providers.</p>
+  </footer>
+
+  <script>
+    const SOLANA_NETWORK = "https://api.mainnet-beta.solana.com";
+    let provider, connection, publicKey;
+
+    async function connectWallet(type) {
+      if (type === 'phantom' && window.solana?.isPhantom) provider = window.solana;
+      else if (type === 'solflare' && window.solflare) provider = window.solflare;
+      else return alert('Install Phantom or Solflare');
+      await provider.connect();
+      publicKey = provider.publicKey;
+      document.getElementById('walletAddress').textContent = 'Connected: ' + publicKey.toString();
+    }
+
+    async function sendSol(amount) {
+      connection = new solanaWeb3.Connection(SOLANA_NETWORK);
+      const transaction = new solanaWeb3.Transaction().add(
+        solanaWeb3.SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: solanaWeb3.Keypair.fromSeed(new Uint8Array(32)).publicKey, // dummy receiver
+          lamports: solanaWeb3.LAMPORTS_PER_SOL * amount
+        })
+      );
+      transaction.feePayer = publicKey;
+      transaction.recentBlockhash = (await connection.getRecentBlockhash()).blockhash;
+      const signed = await provider.signTransaction(transaction);
+      await connection.sendRawTransaction(signed.serialize());
+      await connection.confirmTransaction(signed.signature);
+    }
+
+    function nextPage() {
+      document.getElementById(`page${currentPage}`).classList.remove("active");
+      currentPage++;
+      document.getElementById(`page${currentPage}`).classList.add("active");
+    }
+
+    function prevPage() {
+      document.getElementById(`page${currentPage}`).classList.remove("active");
+      currentPage--;
+      document.getElementById(`page${currentPage}`).classList.add("active");
+    }
+
+    function revokeAuthorities() {
+      // logic for paying the fee and revoking authorities (involving transaction)
+    }
+
+    function createPool() {
+      // logic for creating liquidity pool
+    }
+
+    let currentPage = 1;
+  </script>
+</body>
+</html>
